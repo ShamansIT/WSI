@@ -11,35 +11,33 @@
     height: 100%;
     overflow: hidden;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-    background: radial-gradient(circle at center, #1b1f23, #000);
+    background: #0b0f14; /* softer than hard gradient */
   }
 
-  /* Background dim + blur */
+  /* ✅ lighter dim + gentle blur */
   .overlay {
     position: fixed;
     inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
-    animation: fadeIn 0.55s ease-out forwards;
+    display: grid;
+    place-items: center;
+    background: rgba(0,0,0,0.35);        /* lighter dim */
+    backdrop-filter: blur(6px);          /* softer blur */
+    animation: fadeIn 0.45s ease-out forwards;
   }
 
-  /* Card */
   .content {
-    transform: scale(0.86) translateY(26px);
+    transform: scale(0.90) translateY(18px);
     opacity: 0;
-    animation: zoomIn 0.75s cubic-bezier(.2,.9,.2,1) forwards;
+    animation: zoomIn 0.65s cubic-bezier(.2,.9,.2,1) forwards;
     max-width: 92vw;
     max-height: 88vh;
-    box-shadow: 0 40px 120px rgba(0,0,0,0.8);
+    box-shadow: 0 30px 90px rgba(0,0,0,0.55);
     border-radius: 16px;
     overflow: hidden;
     background: #0d1117;
     position: relative;
   }
 
-  /* Image wrapper to enable zoom-on-hover */
   .img-wrap {
     width: 100%;
     height: 100%;
@@ -47,7 +45,6 @@
     background: #0d1117;
   }
 
-  /* The image itself */
   img {
     display: block;
     width: 100%;
@@ -59,54 +56,66 @@
 
   /* ✅ Zoom on hover */
   .img-wrap:hover img {
-    transform: scale(1.18);
+    transform: scale(1.12);
   }
 
-  /* Close button */
+  /* ✅ Close button ALWAYS visible */
   .close {
     position: fixed;
-    top: 20px;
-    right: 22px;
-    font-size: 18px;
+    top: 18px;
+    right: 18px;
+    z-index: 9999; /* important */
+    font-size: 16px;
     padding: 10px 14px;
-    background: rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.14);
     color: #fff;
-    border: 1px solid rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.22);
     border-radius: 999px;
     cursor: pointer;
     transition: 160ms ease;
     user-select: none;
   }
-  .close:hover { background: rgba(255,255,255,0.22); }
+  .close:hover { background: rgba(255,255,255,0.24); }
 
-  /* Hint */
   .hint {
     position: fixed;
-    left: 22px;
-    bottom: 18px;
+    left: 18px;
+    bottom: 14px;
+    z-index: 9999;
     font-size: 12px;
-    color: rgba(255,255,255,0.65);
-    letter-spacing: 0.2px;
+    color: rgba(255,255,255,0.72);
   }
 
-  /* Exit animation */
-  @keyframes zoomOut {
-    to { transform: scale(0.92) translateY(38px); opacity: 0; }
+  /* shown if tab can't be closed */
+  .fallback {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
   }
-  @keyframes zoomIn {
-    to { transform: scale(1) translateY(0); opacity: 1; }
+  .fallback .msg {
+    pointer-events: none;
+    font-size: 14px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.45);
+    color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.15);
   }
-  @keyframes fadeIn {
-    from { opacity: 0 }
-    to { opacity: 1 }
-  }
+
+  @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
+  @keyframes zoomIn { to { transform: scale(1) translateY(0); opacity: 1; } }
+  @keyframes zoomOut { to { transform: scale(0.94) translateY(26px); opacity: 0; } }
 </style>
 </head>
 
 <body>
 
 <button class="close" onclick="closeDemo()">✕ Close</button>
-<div class="hint">Tip: Hover to zoom • Press ESC to close</div>
+<div class="hint">Hover to zoom • ESC to close</div>
 
 <div class="overlay" id="overlay" onclick="onOverlayClick(event)">
   <div class="content" id="content">
@@ -116,21 +125,22 @@
   </div>
 </div>
 
-<script>
-  // 1) Pick image from URL: ?img=create-field.png
-  const params = new URLSearchParams(window.location.search);
-  const imgParam = params.get('img') || 'create-field.png'; // default
-  const imgEl = document.getElementById('demoImg');
+<div class="fallback" id="fallback">
+  <div class="msg">If this tab doesn’t close automatically — press Ctrl+W (or close the tab)</div>
+</div>
 
-  // If you host on GitHub Pages, relative path works:
-  imgEl.src = `assets/${imgParam}`;
+<script>
+  // Load image from URL: ?img=create-field.png
+  const params = new URLSearchParams(window.location.search);
+  const imgParam = params.get('img') || 'create-field.png';
+  document.getElementById('demoImg').src = `assets/${imgParam}`;
 
   // ✅ ESC to close
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeDemo();
   });
 
-  // Click outside content to close (optional but nice)
+  // Click outside content to close
   function onOverlayClick(e) {
     const content = document.getElementById('content');
     if (!content.contains(e.target)) closeDemo();
@@ -138,9 +148,22 @@
 
   function closeDemo() {
     const c = document.getElementById('content');
-    c.style.animation = 'zoomOut 0.42s ease-in forwards';
-    // Give the animation time, then close.
-    setTimeout(() => window.close(), 360);
+    c.style.animation = 'zoomOut 0.35s ease-in forwards';
+
+    setTimeout(() => {
+      // 1) Try close (may be blocked)
+      window.close();
+
+      // 2) If not closed, try go back
+      setTimeout(() => {
+        if (history.length > 1) {
+          history.back();
+        } else {
+          // 3) Last resort: show hint
+          document.getElementById('fallback').style.display = 'grid';
+        }
+      }, 120);
+    }, 260);
   }
 </script>
 
