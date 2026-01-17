@@ -126,8 +126,7 @@
 </div>
 
 <div class="fallback" id="fallback">
-  <div class="msg">If this tab doesn’t close automatically — press Ctrl+W (or close the tab)</div>
-</div>
+  <div class="msg">
 
 <script>
   // Load image from URL: ?img=create-field.png
@@ -135,7 +134,7 @@
   const imgParam = params.get('img') || 'create-field.png';
   document.getElementById('demoImg').src = `assets/${imgParam}`;
 
-  // ✅ ESC to close
+  // ESC to close
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeDemo();
   });
