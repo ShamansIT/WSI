@@ -109,6 +109,7 @@
   // default first
   imgEl.src = `assets/${defaultImg}`;
 
+  // then try requested image
   if (imgParam) {
     const test = new Image();
     test.onload = () => { imgEl.src = `assets/${imgParam}`; };
@@ -120,7 +121,7 @@
   const content = document.getElementById('content');
   const closeBtn = document.getElementById('closeBtn');
 
-  // Close handlers
+  // (No overlay click handler!)
   content.addEventListener('click', (e) => e.stopPropagation());
   overlay.addEventListener('click', (e) => e.stopPropagation());
 
