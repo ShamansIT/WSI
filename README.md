@@ -1,2 +1,90 @@
-# wow-pdf-demo
-Implement images in PDF presentations with dynamic on/off and visual effects.
+# WOW Slide Viewer
+
+Interactive presentation slide viewer with popup window mode, drawing tools, and keyboard navigation.
+
+Designed for speakers and presenters who embed slide images into PDF/PowerPoint presentations and want a clean, immersive viewing experience when the audience clicks a link.
+
+## How It Works
+
+1. Add a hyperlink in your presentation pointing to:
+   ```
+   https://<your-github>.github.io/wow-pdf-demo/?img=Click-Ops/01_Setup_Clicks.png
+   ```
+2. When clicked, the viewer opens in a **popup window** (no address bar, no tabs) with a dark background and the slide centered
+3. Navigate between slides with arrow keys or on-screen buttons
+4. Press **Close** or **ESC** to return to the presentation
+
+## Features
+
+- **Popup window** — opens without browser chrome for a clean presentation look
+- **Slide navigation** — arrow keys, on-screen buttons, mobile swipe
+- **Auto-discovery** — slides loaded from `slides.json` (no HTML editing needed)
+- **Draw tool** — annotate slides live during presentation (press `D`)
+- **Wheel zoom** — scroll to zoom in/out, mouse position as focal point
+- **Responsive** — works on desktop, tablet, and mobile
+- **Fallback** — if popup is blocked, works as a regular page
+- **Zero dependencies** — single HTML file, vanilla JS/CSS
+
+## Quick Start
+
+### GitHub Pages
+
+1. Fork or clone this repository
+2. Add your slide images to `assets/` (organize in subfolders)
+3. Generate the manifest:
+   ```powershell
+   # Windows
+   .\generate-slides.ps1
+
+   # Linux / Mac
+   ./generate-slides.sh
+   ```
+4. Commit and push
+5. Enable GitHub Pages in repo Settings > Pages > Source: `main` / `root`
+6. Use `https://<you>.github.io/<repo>/?img=<path>` in your presentations
+
+### Local
+
+1. Add images to `assets/`
+2. Run `generate-slides.ps1` or `generate-slides.sh`
+3. Open `index.html` in a browser (or use a local server)
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Arrow Left` / `Arrow Right` | Previous / Next slide |
+| `D` | Toggle draw mode |
+| `ESC` | Exit draw / reset zoom / close viewer |
+| `Double-click` | Reset zoom |
+
+## Project Structure
+
+```
+wow-pdf-demo/
+  index.html             # Viewer application (single file)
+  slides.json            # Auto-generated slide manifest
+  generate-slides.ps1    # Slide scanner (Windows)
+  generate-slides.sh     # Slide scanner (Linux/Mac)
+  assets/
+    404.png              # Fallback image
+    Click-Ops/           # Slide group example
+      01_Setup_Clicks.png
+      ...
+    U-turn/              # Another slide group
+      01_No_Software.jpg
+```
+
+## How slides.json Works
+
+The `generate-slides` script scans `assets/` recursively for images (png, jpg, jpeg, gif, webp, svg), excludes `404.png` and `.gitkeep`, and writes a sorted JSON array:
+
+```json
+["Click-Ops/01_Setup_Clicks.png","Click-Ops/02_Multitab_Pain.png","U-turn/01_No_Software.jpg"]
+```
+
+The viewer fetches this file on load — no need to edit HTML when adding new slides.
+
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE)

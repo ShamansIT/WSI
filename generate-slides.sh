@@ -5,19 +5,28 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-echo "["
-first=true
-find assets -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.webp" -o -iname "*.svg" \) \
+output="slides.json"
+
+files=$(find assets -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" -o -iname "*.webp" -o -iname "*.svg" \) \
   ! -name "404.png" ! -name ".gitkeep" \
   | sed 's|^assets/||' \
-  | sort \
-  | while read -r file; do
+  | sort)
+
+if [ -z "$files" ]; then
+  printf '[]' > "$output"
+else
+  printf '[' > "$output"
+  first=true
+  while IFS= read -r file; do
     if [ "$first" = true ]; then
       first=false
     else
-      echo ","
+      printf ',' >> "$output"
     fi
-    printf '  "%s"' "$file"
-  done
-echo ""
-echo "]"
+    printf '"%s"' "$file" >> "$output"
+  done <<< "$files"
+  printf ']' >> "$output"
+fi
+
+count=$(echo "$files" | grep -c . || true)
+echo "Generated slides.json with $count slides"
