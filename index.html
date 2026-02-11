@@ -5,13 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>WOW Demo Viewer</title>
 
+<!-- Open Graph -->
+<meta property="og:title" content="WOW Demo Viewer" />
+<meta property="og:description" content="Interactive presentation slide viewer with visual effects" />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="assets/default.png" />
+
 <style>
   html, body {
     margin: 0;
     height: 100%;
     overflow: hidden;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-    background: #0b0f14; 
+    background: #0b0f14;
   }
 
   /* Soft dim + light blur */
@@ -27,8 +33,11 @@
   }
 
   .content {
+    position: relative;
     max-width: 92vw;
     max-height: 88vh;
+    min-width: 200px;
+    min-height: 150px;
     border-radius: 16px;
     overflow: hidden;
     background: #0d1117;
@@ -39,6 +48,7 @@
   }
 
   .img-wrap {
+    position: relative;
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -50,14 +60,21 @@
     width: 100%;
     height: auto;
     transform: scale(1);
-    transition: transform 200ms ease;
+    transition: transform 200ms ease, opacity 200ms ease;
     transform-origin: center center;
     user-select: none;
     -webkit-user-drag: none;
   }
 
-  /* Zoom on hover */
-  .img-wrap:hover img {
+  /* Zoom on hover — desktop only, disabled during draw */
+  @media (hover: hover) {
+    .img-wrap:not(.draw-active):hover img {
+      transform: scale(1.12);
+    }
+  }
+
+  /* Tap-to-zoom — touch devices */
+  .img-wrap.zoomed:not(.draw-active) img {
     transform: scale(1.12);
   }
 
@@ -81,6 +98,202 @@
     background: rgba(255,255,255,0.24);
   }
 
+  /* Navigation arrows */
+  .nav-btn {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 9999;
+    font-size: 22px;
+    width: 44px;
+    height: 44px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.10);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: 160ms ease;
+    user-select: none;
+  }
+  .nav-btn:hover {
+    background: rgba(255,255,255,0.22);
+  }
+  .nav-btn.visible {
+    display: flex;
+  }
+  .nav-prev { left: 18px; }
+  .nav-next { right: 18px; }
+
+  /* Slide indicator */
+  .slide-indicator {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    font-size: 13px;
+    padding: 6px 14px;
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 999px;
+    user-select: none;
+    display: none;
+  }
+  .slide-indicator.visible {
+    display: block;
+  }
+
+  /* Spinner */
+  .spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: rgba(255,255,255,0.6);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    z-index: 1;
+  }
+  .spinner.hidden { display: none; }
+
+  /* ── Draw tool ── */
+  .draw-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .img-wrap.draw-active .draw-canvas {
+    pointer-events: auto;
+    cursor: crosshair;
+  }
+  .img-wrap.draw-active.eraser-active .draw-canvas {
+    cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="none" stroke="white" stroke-width="2"/></svg>') 12 12, crosshair;
+  }
+
+  /* Draw toggle button */
+  .draw-toggle {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    z-index: 9999;
+    font-size: 15px;
+    padding: 9px 14px;
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: 160ms ease;
+    user-select: none;
+  }
+  .draw-toggle:hover {
+    background: rgba(255,255,255,0.24);
+  }
+  .draw-toggle.active {
+    background: rgba(255,100,100,0.35);
+    border-color: rgba(255,100,100,0.5);
+  }
+
+  /* Draw toolbar */
+  .draw-toolbar {
+    position: fixed;
+    top: 64px;
+    left: 18px;
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(20,24,33,0.92);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 14px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .draw-toolbar.visible {
+    display: flex;
+  }
+
+  .toolbar-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .color-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: 120ms ease;
+    padding: 0;
+  }
+  .color-btn:hover {
+    transform: scale(1.15);
+  }
+  .color-btn.active {
+    border-color: #fff;
+    box-shadow: 0 0 6px rgba(255,255,255,0.4);
+  }
+
+  .size-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: 120ms ease;
+    padding: 0;
+  }
+  .size-btn:hover {
+    background: rgba(255,255,255,0.18);
+  }
+  .size-btn.active {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
+  }
+  .size-dot {
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .tool-btn {
+    font-size: 13px;
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.8);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 120ms ease;
+    white-space: nowrap;
+  }
+  .tool-btn:hover {
+    background: rgba(255,255,255,0.18);
+  }
+  .tool-btn.active {
+    background: rgba(255,180,80,0.3);
+    border-color: rgba(255,180,80,0.5);
+    color: #fff;
+  }
+
+  @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
   @keyframes fadeIn { from {opacity: 0} to {opacity: 1} }
   @keyframes zoomIn { to { transform: scale(1) translateY(0); opacity: 1; } }
   @keyframes zoomOut { to { transform: scale(0.95) translateY(24px); opacity: 0; } }
@@ -89,77 +302,390 @@
 
 <body>
 
-<button class="close" id="closeBtn" type="button">✕ Close</button>
+<button class="close" id="closeBtn" type="button">&#x2715; Close</button>
+<button class="draw-toggle" id="drawToggle" type="button">&#x270E; Draw</button>
+<button class="nav-btn nav-prev" id="prevBtn" type="button">&#x2039;</button>
+<button class="nav-btn nav-next" id="nextBtn" type="button">&#x203A;</button>
+<div class="slide-indicator" id="slideIndicator"></div>
+
+<div class="draw-toolbar" id="drawToolbar">
+  <div class="toolbar-row" id="colorRow">
+    <button class="color-btn active" data-color="#ef4444" style="background:#ef4444" type="button"></button>
+    <button class="color-btn" data-color="#facc15" style="background:#facc15" type="button"></button>
+    <button class="color-btn" data-color="#22c55e" style="background:#22c55e" type="button"></button>
+    <button class="color-btn" data-color="#3b82f6" style="background:#3b82f6" type="button"></button>
+    <button class="color-btn" data-color="#ffffff" style="background:#ffffff" type="button"></button>
+  </div>
+  <div class="toolbar-row" id="sizeRow">
+    <button class="size-btn active" data-size="3" type="button"><span class="size-dot" style="width:5px;height:5px"></span></button>
+    <button class="size-btn" data-size="6" type="button"><span class="size-dot" style="width:9px;height:9px"></span></button>
+    <button class="size-btn" data-size="12" type="button"><span class="size-dot" style="width:14px;height:14px"></span></button>
+  </div>
+  <div class="toolbar-row">
+    <button class="tool-btn" id="eraserBtn" type="button">Eraser</button>
+    <button class="tool-btn" id="clearBtn" type="button">Clear</button>
+  </div>
+</div>
 
 <div class="overlay" id="overlay">
   <div class="content" id="content">
-    <div class="img-wrap">
+    <div class="spinner" id="spinner"></div>
+    <div class="img-wrap" id="imgWrap">
       <img id="demoImg" alt="Demo image" />
+      <canvas class="draw-canvas" id="drawCanvas"></canvas>
     </div>
   </div>
 </div>
 
 <script>
-  const overlay = document.getElementById('overlay');
-  const content = document.getElementById('content');
-  const closeBtn = document.getElementById('closeBtn');
-  const imgEl = document.getElementById('demoImg');
+  var overlay = document.getElementById('overlay');
+  var content = document.getElementById('content');
+  var closeBtn = document.getElementById('closeBtn');
+  var imgEl = document.getElementById('demoImg');
+  var spinner = document.getElementById('spinner');
+  var imgWrap = document.getElementById('imgWrap');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var slideIndicator = document.getElementById('slideIndicator');
+  var drawToggle = document.getElementById('drawToggle');
+  var drawToolbar = document.getElementById('drawToolbar');
+  var drawCanvas = document.getElementById('drawCanvas');
+  var ctx = drawCanvas.getContext('2d');
+  var eraserBtn = document.getElementById('eraserBtn');
+  var clearBtn = document.getElementById('clearBtn');
 
-  const params = new URLSearchParams(window.location.search);
-  const imgParam = params.get('img');
-  const defaultImg = 'default.png';
+  // Slides manifest — add new slides here (png, jpg, gif supported)
+  var slides = [
+    'Slide_04_01_Setup_Clicks.png',
+    'Slide_04_02_Multitab_Pain.png',
+    'Slide_04_03_Big_picture_Schema_Builder.png',
+    'Slide_04_04_Verification_Takes_Time.png',
+    'Slide_04_05_Parallel_Development.png',
+  ];
 
-  // default first
-  imgEl.src = `assets/${defaultImg}`;
+  var params = new URLSearchParams(window.location.search);
+  var imgParam = params.get('img');
+  var defaultImg = 'default.png';
 
-  // then try requested image
-  if (imgParam) {
-    const test = new Image();
-    test.onload = () => { imgEl.src = `assets/${imgParam}`; };
-    test.onerror = () => { /* keep default */ };
-    test.src = `assets/${imgParam}`;
+  // Security: only allow safe filenames
+  function isValidFilename(name) {
+    return /^[\w\-. ]+\.(png|jpe?g|gif|webp|svg)$/i.test(name);
   }
 
-  // CLICK SHIELD: never close on left click anywhere (except Close button)
-  function isCloseButtonClick(e) {
-    return e.target && e.target.closest && e.target.closest('#closeBtn');
+  var currentIndex = -1;
+
+  function showSpinner() {
+    spinner.classList.remove('hidden');
+    imgEl.style.opacity = '0';
   }
 
-  document.addEventListener('click', (e) => {
-    if (isCloseButtonClick(e)) return; // allow Close
-    e.preventDefault();
-    e.stopImmediatePropagation();
-  }, true);
+  function hideSpinner() {
+    spinner.classList.add('hidden');
+    imgEl.style.opacity = '1';
+  }
 
-  overlay.addEventListener('click', (e) => {
-    if (isCloseButtonClick(e)) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-  }, true);
+  function updateUI() {
+    if (currentIndex >= 0) {
+      slideIndicator.textContent = (currentIndex + 1) + ' / ' + slides.length;
+      slideIndicator.classList.add('visible');
+      prevBtn.classList.toggle('visible', currentIndex > 0);
+      nextBtn.classList.toggle('visible', currentIndex < slides.length - 1);
+    } else {
+      slideIndicator.classList.remove('visible');
+      prevBtn.classList.remove('visible');
+      nextBtn.classList.remove('visible');
+    }
+  }
 
-  // Close handlers (only button + ESC)
-  closeBtn.addEventListener('click', closeDemo);
+  function loadImage(src, updateUrl) {
+    showSpinner();
+    imgWrap.classList.remove('zoomed');
 
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeDemo();
+    var test = new Image();
+    test.onload = function () {
+      imgEl.src = 'assets/' + src;
+      hideSpinner();
+      resizeCanvas();
+      if (updateUrl) {
+        var url = new URL(window.location);
+        url.searchParams.set('img', src);
+        history.replaceState(null, '', url);
+      }
+    };
+    test.onerror = function () {
+      imgEl.src = 'assets/' + defaultImg;
+      currentIndex = -1;
+      updateUI();
+      hideSpinner();
+      resizeCanvas();
+    };
+    test.src = 'assets/' + src;
+  }
+
+  function navigateTo(index) {
+    if (index < 0 || index >= slides.length) return;
+    currentIndex = index;
+    updateUI();
+    clearCanvas();
+    loadImage(slides[currentIndex], true);
+  }
+
+  // --- Initial load ---
+  if (imgParam && isValidFilename(imgParam)) {
+    currentIndex = slides.indexOf(imgParam);
+    updateUI();
+    loadImage(imgParam, false);
+  } else {
+    imgEl.src = 'assets/' + defaultImg;
+    updateUI();
+  }
+
+  // --- Keyboard navigation ---
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft' && currentIndex > 0) {
+      navigateTo(currentIndex - 1);
+    } else if (e.key === 'ArrowRight' && currentIndex < slides.length - 1) {
+      navigateTo(currentIndex + 1);
+    } else if (e.key === 'Escape') {
+      if (drawActive) {
+        toggleDraw();
+      } else {
+        closeDemo();
+      }
+    } else if (e.key === 'd' || e.key === 'D') {
+      // hotkey D to toggle draw mode
+      if (e.target === document.body) toggleDraw();
+    }
   });
 
-  let closing = false;
+  // --- Button navigation ---
+  prevBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    navigateTo(currentIndex - 1);
+  });
+  nextBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    navigateTo(currentIndex + 1);
+  });
+
+  // --- Mobile: tap to zoom (only when not drawing) ---
+  var isTouchDevice = false;
+  window.addEventListener('touchstart', function () { isTouchDevice = true; }, { once: true });
+
+  imgWrap.addEventListener('click', function (e) {
+    if (!isTouchDevice || drawActive) return;
+    e.stopPropagation();
+    imgWrap.classList.toggle('zoomed');
+  });
+
+  // --- Mobile: swipe navigation (only when not drawing) ---
+  var touchStartX = 0;
+  var touchStartY = 0;
+
+  imgWrap.addEventListener('touchstart', function (e) {
+    if (drawActive) return;
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  imgWrap.addEventListener('touchend', function (e) {
+    if (drawActive) return;
+    var dx = e.changedTouches[0].screenX - touchStartX;
+    var dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+    if (dx < 0) navigateTo(currentIndex + 1);
+    else navigateTo(currentIndex - 1);
+  }, { passive: true });
+
+  // --- Click shield: block all clicks except controls ---
+  function isControlClick(e) {
+    return e.target && e.target.closest &&
+      (e.target.closest('#closeBtn') || e.target.closest('.nav-btn') ||
+       e.target.closest('#imgWrap') || e.target.closest('#drawToggle') ||
+       e.target.closest('.draw-toolbar'));
+  }
+
+  document.addEventListener('click', function (e) {
+    if (isControlClick(e)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+
+  overlay.addEventListener('click', function (e) {
+    if (isControlClick(e)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+
+  // --- Close handlers (button + ESC) ---
+  closeBtn.addEventListener('click', closeDemo);
+
+  var closing = false;
 
   function closeDemo() {
     if (closing) return;
     closing = true;
-
     content.style.animation = 'zoomOut 0.30s ease-in forwards';
-
-    setTimeout(() => {
+    setTimeout(function () {
       window.close();
-      setTimeout(() => {
+      setTimeout(function () {
         if (history.length > 1) history.back();
         else location.replace('about:blank');
       }, 120);
     }, 220);
   }
+
+  // ══════════════════════════════════════════
+  //  DRAW TOOL
+  // ══════════════════════════════════════════
+  var drawActive = false;
+  var drawing = false;
+  var drawColor = '#ef4444';
+  var drawSize = 3;
+  var eraserMode = false;
+
+  function toggleDraw() {
+    drawActive = !drawActive;
+    imgWrap.classList.toggle('draw-active', drawActive);
+    drawToggle.classList.toggle('active', drawActive);
+    drawToolbar.classList.toggle('visible', drawActive);
+    if (!drawActive) {
+      eraserMode = false;
+      eraserBtn.classList.remove('active');
+      imgWrap.classList.remove('eraser-active');
+    }
+  }
+
+  drawToggle.addEventListener('click', function (e) {
+    e.stopPropagation();
+    toggleDraw();
+  });
+
+  // --- Canvas sizing ---
+  function resizeCanvas() {
+    var rect = imgWrap.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    drawCanvas.width = rect.width * dpr;
+    drawCanvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  }
+
+  imgEl.addEventListener('load', resizeCanvas);
+  window.addEventListener('resize', resizeCanvas);
+
+  // --- Drawing: mouse ---
+  function getCanvasPos(e) {
+    var rect = drawCanvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  drawCanvas.addEventListener('mousedown', function (e) {
+    if (!drawActive) return;
+    drawing = true;
+    var pos = getCanvasPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  });
+
+  drawCanvas.addEventListener('mousemove', function (e) {
+    if (!drawing) return;
+    var pos = getCanvasPos(e);
+    ctx.lineWidth = eraserMode ? drawSize * 4 : drawSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (eraserMode) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = drawColor;
+    }
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  });
+
+  drawCanvas.addEventListener('mouseup', function () { drawing = false; });
+  drawCanvas.addEventListener('mouseleave', function () { drawing = false; });
+
+  // --- Drawing: touch ---
+  drawCanvas.addEventListener('touchstart', function (e) {
+    if (!drawActive) return;
+    e.preventDefault();
+    drawing = true;
+    var t = e.touches[0];
+    var pos = getCanvasPos(t);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  });
+
+  drawCanvas.addEventListener('touchmove', function (e) {
+    if (!drawing) return;
+    e.preventDefault();
+    var t = e.touches[0];
+    var pos = getCanvasPos(t);
+    ctx.lineWidth = eraserMode ? drawSize * 4 : drawSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (eraserMode) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = drawColor;
+    }
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  });
+
+  drawCanvas.addEventListener('touchend', function () { drawing = false; });
+
+  // --- Toolbar: colors ---
+  document.getElementById('colorRow').addEventListener('click', function (e) {
+    var btn = e.target.closest('.color-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    drawColor = btn.dataset.color;
+    eraserMode = false;
+    eraserBtn.classList.remove('active');
+    imgWrap.classList.remove('eraser-active');
+    this.querySelectorAll('.color-btn').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+
+  // --- Toolbar: sizes ---
+  document.getElementById('sizeRow').addEventListener('click', function (e) {
+    var btn = e.target.closest('.size-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    drawSize = parseInt(btn.dataset.size, 10);
+    this.querySelectorAll('.size-btn').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+
+  // --- Toolbar: eraser ---
+  eraserBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    eraserMode = !eraserMode;
+    this.classList.toggle('active', eraserMode);
+    imgWrap.classList.toggle('eraser-active', eraserMode);
+  });
+
+  // --- Toolbar: clear ---
+  clearBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    clearCanvas();
+  });
 </script>
 
 
