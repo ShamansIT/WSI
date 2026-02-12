@@ -1,0 +1,29 @@
+name: Generate slides.json
+
+on:
+  push:
+    branches: [main]
+    paths: ['assets/**']
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate slides.json
+        run: |
+          chmod +x generate-slides.sh
+          ./generate-slides.sh
+
+      - name: Commit if changed
+        run: |
+          git diff --quiet slides.json && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add slides.json
+          git commit -m "chore: auto-generate slides.json"
+          git push
